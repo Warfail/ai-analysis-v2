@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload Report - Report Analyzer AI</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <a href="index.html" class="nav-brand">
+                📊 Report Analyzer AI
+            </a>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="upload.html" class="nav-link active">Upload</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="dashboard.html" class="nav-link">Analytics</a>
+                <div class="ai-status" id="aiStatus">AI Active</div>
+            </div>
+        </nav>
+
+        <!-- Upload Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Upload 5-Column CSV Report</h2>
+                <p style="color: var(--gray); margin-top: 5px;">
+                    Format: Department, Date, Problems, Achievements, Future_Plan
+                </p>
+            </div>
+
+            <div class="form-group">
+                <label for="department">Department (for this upload)</label>
+                <select id="department" class="form-control">
+                    <option value="IT">IT Department</option>
+                    <option value="Engineering">Engineering</option>
+                    <option value="Marketing">Marketing</option>
+                    <option value="Sales">Sales</option>
+                    <option value="HR">Human Resources</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Other">Other</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="reportDate">Report Date</label>
+                <input type="date" id="reportDate" class="form-control">
+            </div>
+
+            <div class="form-group">
+                <label>Select CSV File</label>
+                <div style="border: 2px dashed var(--border); border-radius: 8px; padding: 40px; text-align: center; margin-bottom: 15px; background: var(--light); transition: all 0.3s ease;"
+                     id="dropZone"
+                     ondrop="handleDrop(event)"
+                     ondragover="handleDragOver(event)"
+                     ondragleave="handleDragLeave(event)">
+                    <div style="font-size: 48px; margin-bottom: 15px;">📁</div>
+                    <p style="color: var(--gray); margin-bottom: 20px; font-size: 16px;">
+                        Drag & drop your CSV file here or click to browse
+                    </p>
+                    <button class="btn" onclick="document.getElementById('fileUpload').click()">
+                        Choose File
+                    </button>
+                    <input type="file" id="fileUpload" accept=".csv" style="display: none;">
+                </div>
+                <div id="fileName" style="margin-top: 10px; color: var(--gray);"></div>
+                <div style="font-size: 14px; color: var(--gray); margin-top: 10px;">
+                    <strong>Required format:</strong> Department, Date, Problems, Achievements, Future_Plan
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-top: 30px;">
+                <button class="btn btn-success btn-block" onclick="uploadFile()">
+                    📤 Upload & Analyze
+                </button>
+                <button class="btn btn-outline" onclick="window.location.href='index.html'">
+                    ← Back to Dashboard
+                </button>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-bar" id="progressBar" style="display: none; margin-top: 20px;">
+                <div class="progress-fill" id="progressFill" style="height: 6px; background: var(--primary); width: 0%; transition: width 0.3s ease;"></div>
+            </div>
+        </div>
+
+        <!-- Quick Tips -->
+        <div class="card">
+            <div class="card-header">
+                <h3>💡 Quick Tips</h3>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px;">
+                <div>
+                    <h4 style="color: var(--dark); margin-bottom: 10px;">📋 Get Template</h4>
+                    <p style="color: var(--gray);">Download our 5-column CSV template with example data.</p>
+                    <button class="btn" onclick="downloadTemplate()" style="margin-top: 10px;">Download Template</button>
+                </div>
+                <div>
+                    <h4 style="color: var(--dark); margin-bottom: 10px;">🎯 Try Sample</h4>
+                    <p style="color: var(--gray);">Want to test first? Try our sample CSV data.</p>
+                    <button class="btn" onclick="loadSampleCSV()" style="margin-top: 10px;">Load Sample CSV</button>
+                </div>
+                <div>
+                    <h4 style="color: var(--dark); margin-bottom: 10px;">📝 Text Input</h4>
+                    <p style="color: var(--gray);">Prefer to type? Use our text analysis option.</p>
+                    <button class="btn" onclick="showTextModal()" style="margin-top: 10px;">Analyze Text</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="loading-spinner"></div>
+            <p>Uploading and analyzing with AI...</p>
+        </div>
+    </div>
+
+    <!-- Text Input Modal -->
+    <div class="modal" id="textModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center;">
+        <div class="card" style="max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2>Analyze Text Report</h2>
+                <button onclick="document.getElementById('textModal').style.display = 'none'" style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray);">×</button>
+            </div>
+            <textarea id="textInput" style="width: 100%; height: 200px; padding: 15px; border: 2px solid var(--border); border-radius: 8px; margin-bottom: 20px;" placeholder="Paste your report text here..."></textarea>
+            <button class="btn btn-success btn-block" onclick="analyzeText()">Analyze Text</button>
+        </div>
+    </div>
+
+    <script src="assets/script.js"></script>
+    <script>
+        // Upload page specific JavaScript
+        let selectedFile = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('reportDate').value = today;
+            
+            // File upload listener
+            document.getElementById('fileUpload').addEventListener('change', function(e) {
+                if (e.target.files.length > 0) {
+                    handleFileSelect(e.target.files[0]);
+                }
+            });
+        });
+
+        function handleFileSelect(file) {
+            if (!file.name.toLowerCase().endsWith('.csv')) {
+                showAlert('Please select a CSV file (ending with .csv)', 'error');
+                return;
+            }
+            
+            selectedFile = file;
+            document.getElementById('fileName').textContent = `Selected: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            document.getElementById('dropZone').style.borderColor = 'var(--success)';
+            document.getElementById('dropZone').style.background = '#f0f9ff';
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropZone').style.borderColor = 'var(--primary)';
+            document.getElementById('dropZone').style.background = '#f0f9ff';
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            document.getElementById('dropZone').style.borderColor = 'var(--border)';
+            document.getElementById('dropZone').style.background = 'var(--light)';
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            if (e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                if (file.name.toLowerCase().endsWith('.csv')) {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    document.getElementById('fileUpload').files = dataTransfer.files;
+                    handleFileSelect(file);
+                } else {
+                    showAlert('Please drop a CSV file.', 'error');
+                }
+            }
+            
+            document.getElementById('dropZone').style.borderColor = 'var(--border)';
+            document.getElementById('dropZone').style.background = 'var(--light)';
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) {
+                showAlert('Please select a CSV file first.', 'error');
+                return;
+            }
+
+            const department = document.getElementById('department').value;
+            const date = document.getElementById('reportDate').value;
+
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            formData.append('department', department);
+            formData.append('date', date);
+
+            showLoading(true);
+            document.getElementById('progressBar').style.display = 'block';
+
+            try {
+                const response = await axios.post(`${API_BASE}/upload-csv`, formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
+                    },
+                    onUploadProgress: function(progressEvent) {
+                        if (progressEvent.lengthComputable) {
+                            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+                            document.getElementById('progressFill').style.width = `${percentCompleted}%`;
+                        }
+                    }
+                });
+
+                showAlert('CSV analyzed successfully!', 'success');
+                
+                // Redirect to analysis page with the report data
+                setTimeout(() => {
+                    window.location.href = `analysis.html?report=${response.data.file_info.filename}`;
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Upload error:', error);
+                const errorMsg = error.response?.data?.error || 'Upload failed. Please check your CSV format.';
+                showAlert(errorMsg, 'error');
+                showLoading(false);
+                document.getElementById('progressBar').style.display = 'none';
+            }
+        }
+
+        function downloadTemplate() {
+            window.open(`${API_BASE}/template`, '_blank');
+        }
+
+        function loadSampleCSV() {
+            const sampleCSV = `Department,Date,Problems,Achievements,Future_Plan
+IT,2024-01-15,"Network issue, VPN down","Fixed login bug, Deployed dashboard","Optimize queries, Schedule maintenance"
+IT,2024-01-15,"Database slow, Backup outdated","Root cause identified, Monitoring added","Upgrade backup system, Write documentation"
+Engineering,2024-01-15,"Bug in API v2, Test coverage low","Project phase completed, Team trained","Client meeting, Fix API bug"`;
+            
+            const blob = new Blob([sampleCSV], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'sample_report.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+            
+            showAlert('Sample CSV downloaded. Fill it with your data and upload!', 'success');
+        }
+
+        function showTextModal() {
+            document.getElementById('textModal').style.display = 'flex';
+        }
+
+        async function analyzeText() {
+            const text = document.getElementById('textInput').value.trim();
+            
+            if (!text || text.length < 10) {
+                showAlert('Please enter at least 10 characters of text.', 'error');
+                return;
+            }
+
+            showLoading(true);
+            
+            try {
+                const response = await axios.post(`${API_BASE}/analyze-text`, 
+                    new URLSearchParams({ text: text }),
+                    { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+                );
+
+                showAlert('Text analyzed successfully!', 'success');
+                document.getElementById('textModal').style.display = 'none';
+                
+                // Redirect to analysis page
+                setTimeout(() => {
+                    window.location.href = 'analysis.html';
+                }, 1000);
+                
+            } catch (error) {
+                console.error('Text analysis error:', error);
+                showAlert('Text analysis failed. Please try again.', 'error');
+                showLoading(false);
+            }
+        }
+    </script>
+</body>
+</html>

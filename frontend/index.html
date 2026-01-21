@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Report Analyzer AI - Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="assets/style.css">
+</head>
+<body>
+    <div class="container">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <a href="index.html" class="nav-brand">
+                📊 Report Analyzer AI
+            </a>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link active">Dashboard</a>
+                <a href="upload.html" class="nav-link">Upload</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="dashboard.html" class="nav-link">Analytics</a>
+                <div class="ai-status" id="aiStatus">AI Active</div>
+            </div>
+        </nav>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-value" id="totalReports">0</div>
+                <div class="stat-label">Total Reports</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalProblems">0</div>
+                <div class="stat-label">Problems Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalAchievements">0</div>
+                <div class="stat-label">Achievements</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value" id="totalDepartments">0</div>
+                <div class="stat-label">Departments</div>
+            </div>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Quick Actions</h2>
+            </div>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px;">
+                <a href="upload.html" class="btn btn-success">
+                    📁 Upload New Report
+                </a>
+                <button onclick="loadSampleData()" class="btn">
+                    📊 View Sample Data
+                </button>
+                <a href="reports.html" class="btn btn-outline">
+                    📋 View All Reports
+                </a>
+                <button onclick="downloadTemplate()" class="btn">
+                    📋 Get Template
+                </button>
+            </div>
+        </div>
+
+        <!-- Recent Reports -->
+        <div class="card">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2>Recent Reports</h2>
+                <a href="reports.html" class="btn btn-outline">View All</a>
+            </div>
+            <div id="recentReports" style="min-height: 200px;">
+                <div style="text-align: center; color: var(--gray); padding: 40px;">
+                    Loading recent reports...
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div class="loading" id="loadingIndicator">
+            <div class="loading-spinner"></div>
+            <p>Loading dashboard data...</p>
+        </div>
+    </div>
+
+    <script src="assets/script.js"></script>
+    <script>
+        // Dashboard specific JavaScript
+        async function loadDashboardStats() {
+            try {
+                const response = await axios.get(`${API_BASE}/stats`);
+                const data = response.data;
+                
+                document.getElementById('totalReports').textContent = data.total_reports || 0;
+                document.getElementById('totalProblems').textContent = data.total_problems || 0;
+                document.getElementById('totalAchievements').textContent = data.total_achievements || 0;
+                document.getElementById('totalDepartments').textContent = data.total_departments || 0;
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            }
+        }
+
+        async function loadRecentReports() {
+            try {
+                const response = await axios.get(`${API_BASE}/reports?limit=5`);
+                const reports = response.data.reports || [];
+                
+                const container = document.getElementById('recentReports');
+                
+                if (reports.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; color: var(--gray); padding: 40px;">
+                            No reports yet. <a href="upload.html" style="color: var(--primary);">Upload your first report!</a>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Department</th>
+                                    <th>Date</th>
+                                    <th>File</th>
+                                    <th>Problems</th>
+                                    <th>Achievements</th>
+                                    <th>Sentiment</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${reports.map(report => `
+                                    <tr onclick="window.location.href='analysis.html?report=${report.id}'" style="cursor: pointer;">
+                                        <td>${report.department || 'N/A'}</td>
+                                        <td>${formatDate(report.report_date || report.upload_date)}</td>
+                                        <td>${report.filename}</td>
+                                        <td><span class="badge badge-danger">${report.total_problems || 0}</span></td>
+                                        <td><span class="badge badge-success">${report.total_achievements || 0}</span></td>
+                                        <td>
+                                            <span class="badge badge-${report.sentiment_label === 'positive' ? 'success' : report.sentiment_label === 'negative' ? 'danger' : 'info'}">
+                                                ${report.sentiment_label || 'neutral'}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            } catch (error) {
+                console.error('Error loading recent reports:', error);
+            }
+        }
+
+        async function loadSampleData() {
+            try {
+                const response = await axios.get(`${API_BASE}/test-data`);
+                showAlert('Sample data loaded successfully!', 'success');
+                // Redirect to analysis page with sample data
+                window.location.href = `analysis.html?sample=true`;
+            } catch (error) {
+                console.error('Error loading sample data:', error);
+                showAlert('Could not load sample data', 'error');
+            }
+        }
+
+        function downloadTemplate() {
+            window.open(`${API_BASE}/template`, '_blank');
+        }
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', async function() {
+            showLoading(true);
+            await Promise.all([
+                loadDashboardStats(),
+                loadRecentReports()
+            ]);
+            showLoading(false);
+        });
+    </script>
+</body>
+</html>

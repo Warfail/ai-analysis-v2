@@ -1,0 +1,2 @@
+# For local development
+DATABASE_URL=postgresql://postgres:password@localhost:5432/report_analyzer
